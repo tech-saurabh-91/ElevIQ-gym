@@ -28,6 +28,13 @@ if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
 app.use('/api', rateLimit({ windowMs: 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false }));
 app.use('/api', routes);
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'GymFlow API is running successfully!',
+    status: 'online'
+  });
+});
 
 app.use(notFound);
 app.use(errorHandler);
