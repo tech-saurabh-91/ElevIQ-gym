@@ -1,24 +1,46 @@
 {
-  "name": "gymflow-server",
-  "version": "1.0.0",
+  "name": "gym-platform-api",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "GymFlow - Large-scale gym management system API",
-  "main": "src/index.js",
+  "description": "White-label multi-tenant gym platform API",
+  "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "seed": "node src/seed/seed.js"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx src/seed.ts",
+    "test": "vitest run",
+    "dev:memory": "tsx scripts/dev-memory.ts"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.4.0",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.0",
-    "morgan": "^1.10.0"
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.24.8",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "@types/supertest": "^7.2.1",
+    "@vercel/node": "^30.0.0",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

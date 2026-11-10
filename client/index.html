@@ -1,24 +1,21 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05050A" />
-    <meta
-      name="description"
-      content="GymFlow — enterprise gym management for 500+ member facilities: memberships, classes, trainers, equipment, POS and real-time analytics."
-    />
+    <!-- Title, description, favicon, colours and fonts are all set at runtime from the gym's settings. -->
+    <title>Loading…</title>
+    <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <title>GymFlow — Run every rep of your fitness business</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html,body{margin:0;background:#f6f7f9;color:#111}
+      @media (prefers-color-scheme: dark){html,body{background:#0c0d10;color:#eee}}
+      #boot{display:grid;place-items:center;min-height:100vh;font:14px system-ui,sans-serif;opacity:.6}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div id="root"><div id="boot">Loading…</div></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
