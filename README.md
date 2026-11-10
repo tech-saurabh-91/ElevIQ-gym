@@ -1,114 +1,96 @@
-# GymFlow — Gym Management Platform
+# White-label Gym Platform
 
-Full-stack gym operations system: 3D-style public marketing site + role-based operations console (admin / trainer / member).
+One codebase, one database, any number of gyms. Each gym gets a public website and an admin panel. Its logo, colours, banners, offers, plans, prices, hours and contact details all come from its own settings. Onboarding a new gym needs no code change and no redeploy.
 
 | Layer | Stack |
 | --- | --- |
-| Backend | Node.js, Express, MongoDB (Mongoose), JWT |
-| Frontend | React 18, Vite, Tailwind CSS, React Router 6, Framer Motion |
-| 3D / Charts | Three.js via `@react-three/fiber` + `drei`, Recharts |
+| API | Node 20, Express, TypeScript, MongoDB (Mongoose), Zod, JWT, Redis (optional cache) |
+| Web | React 18, TypeScript, Vite, Tailwind (runtime CSS-variable theme), Recharts |
+| Infra | Vercel (two projects), MongoDB Atlas, Upstash Redis (optional), Cloudinary (uploads), Docker Compose for local |
 
-## Quick start
+## Run it locally
+
+**Fastest (no database needed).** This starts an in-memory MongoDB, seeds a demo gym and runs the API:
 
 ```bash
-# 1. API (port 5000)
-cd server
-npm install
-npm run seed        # creates demo data in the database from .env MONGO_URI
-npm run dev
-
-# 2. UI (port 5173, proxies /api -> :5000)
-cd ../client
-npm install
-npm run dev
+cd server && npm install && npm run dev:memory
 ```
 
-Open http://localhost:5173
+```bash
+cd client && npm install && npm run dev
+```
 
-## Demo logins
+Open http://localhost:5173. Every demo login uses the password `Demo@12345`:
 
-| Role | Email | Password |
+| Role | Email | Sees |
 | --- | --- | --- |
-| Admin | `admin@gymflow.io` | `admin123` |
-| Trainer | `marcus.reed@gymflow.io` | `trainer123` |
-| Member | `aarav.sharma0@mail.com` (any seeded member email) | `member123` |
+| Owner / Admin | `owner@demo.gym` | Everything |
+| Manager | `manager@demo.gym` | Members, billing, reports, offers, operations |
+| Front desk | `frontdesk@demo.gym` | Members, recording payments, check-in, leads (read) |
+| Accountant | `accounts@demo.gym` | Read-only invoices, payments and reports |
+| Content editor | `editor@demo.gym` | Website branding, banners, content and offers |
+| Trainer | `trainer@demo.gym` | Classes, check-in, member lookup |
+| Vendor super-admin | `vendor@example.com` at `/platform` | All gyms |
 
-Member emails follow `<first>.<last><index>@mail.com`, e.g. `priya.nair1@mail.com`.
+**Against your own MongoDB.** Copy `server/.env.example` to `server/.env`, fill in `MONGO_URI` and `JWT_SECRET`, then run `npm run seed` and `npm run dev`.
 
-## Public site
+**Docker.** Run `docker compose up --build`, then `docker compose exec api npm run seed`.
 
-`/` home · `/about` · `/gallery` · `/contact` · `/signin` · `/register`
+## How it works
 
-Cinematic dark UI (`void` / `mint` / `violet` palette), a live R3F hero scene, scroll reveals, parallax and tilt interactions.
+### Multi-tenancy (Gym A can never see Gym B)
+- Every gym record carries a `tenantId`. A Mongoose plugin (`server/src/lib/tenantPlugin.ts`) adds a `tenantId` filter to every find, update, delete, count and aggregate. It **refuses to run** if a query has no tenant context, and it blocks any write that targets another gym.
+- The API works out which gym a request is for from the browser's hostname, sent in the `X-Tenant-Host` header. That host can be `<slug>.ROOT_DOMAIN` or a custom domain assigned in the vendor console. Login tokens are bound to one gym, so a Gym A token is rejected on Gym B.
+- In local development, `?gym=<slug>` or `VITE_DEV_TENANT` picks the gym.
 
-### Localization
+### One login, server-side permissions
+`server/src/auth/permissions.ts` maps roles to permissions. Every admin route declares the permission it needs. The client only uses the same list to decide which menus to show.
 
-- **6 languages**: English, Español, Français, Deutsch, हिन्दी, العربية (full RTL flip via `document.dir`).
-- **12 currencies**: USD, EUR, GBP, INR, JPY, BRL, AED, AUD, CAD, SGD, ZAR, MXN.
-- Prices are stored in USD and converted at display time; reporting always aggregates in the base currency.
-- Switcher lives in the navbar, auth screens and the dashboard sidebar (also in **Settings → Region & language**).
+### Single source of truth for prices
+`server/src/lib/pricing.ts` → `quote()` calculates the price for a plan and pricing category. It applies the best live offer (or a promo code), the joining fee and tax (inclusive or exclusive). The public plan cards, the Join page and the front desk's invoice all call it, so the price a visitor sees is the price that gets charged.
 
-## Operations console (`/app`)
+### Website: draft → preview → publish → rollback
+Content is versioned in `SiteRevision` documents. Admins edit one draft and preview it at `/?preview=draft` (editors only). Publishing snapshots the draft as a new version. Rollback re-publishes an older version, and history is never rewritten.
 
-| Module | Routes | Highlights |
-| --- | --- | --- |
-| Overview | `/app` | KPIs, revenue vs cost, member status mix, top classes, live activity feed, review queue |
-| Members | `/app/members` | Table, filters, add/edit modal, check-in, renewal, visit history, member stats |
-| Staff | `/app/staff` | Employees, departments, shifts, training records (admin) |
-| Classes | `/app/classes` | Types, timetable, booking + automatic waitlist, personal sessions |
-| Equipment | `/app/equipment` | Asset registry, utilisation, maintenance tickets with progress |
-| Finance | `/app/finance` | Payments, invoices, expenses, POS sales, revenue analytics (admin) |
-| Check-ins | `/app/checkins` | QR / RFID / member-ID toggle, live floor feed, occupancy |
-| Reports | `/app/reports` | Retention, cohorts, class demand, asset utilisation, staff performance, CSV export |
-| Inbox | `/app/inbox` | Contact enquiries, announcements, campaigns (admin) |
-| Settings | `/app/settings` | Profile, locale/currency, password change |
+### Theme from the logo
+On upload, the browser reads the logo's pixels and picks primary, secondary and accent colours (`client/src/lib/theme.ts`). The server (`server/src/lib/theme.ts`) builds light and dark token sets and nudges colours until every text/background pair passes **WCAG AA (4.5:1)**. Tailwind reads those tokens as CSS variables, so the whole site re-skins at runtime.
 
-Member portal: `/app/membership` (access pass + QR, plan, renew, payments) and `/app/my-classes` (bookings).
+### Leads, not members
+The website's Join and Contact forms only create `Lead` records, with rate limiting and a honeypot field against spam. Staff convert a lead into a member, then sell a membership. That sale creates a numbered invoice and an optional payment.
 
-## API
+### Security
+The API validates every input with Zod and rejects Mongo `$`/`.` operator keys. Logins are rate-limited and compared in constant time. Tokens are revoked when a password, role or status changes. CORS allows only fixed origins plus gym domains. Image URLs must be https, and button links are restricted to safe schemes. CSV exports guard against formula injection. An audit log records logins, publishes, payments, refunds, role changes and vendor support sessions.
 
-Base URL `http://localhost:5000/api`. All protected routes require `Authorization: Bearer <token>`.
+## Deploying on Vercel
 
-| Group | Endpoints |
-| --- | --- |
-| Auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PUT /auth/me`, `PUT /auth/password` |
-| Dashboard | `/dashboard/overview`, `/dashboard/revenue`, `/dashboard/*-analytics`, `/dashboard/activity` |
-| Members | `/members` CRUD, `/members/stats`, `/members/:id/{renew,checkin,history}`, `/members/me/profile` |
-| Staff & ops | `/staff`, `/ops/{equipment,maintenance,shifts}`, `/ops/maintenance/:id/progress` |
-| Classes | `/classes/types`, `/classes/sessions`, `/classes/book`, `/classes/bookings/:id/cancel`, `/classes/my-bookings` |
-| Finance | `/finance/{payments,summary,invoices,expenses,products,sales}` |
-| Front desk | `/checkins/live`, `/checkins/scan`, `/lockers` |
-| Public | `/plans`, `/locations`, `/gallery`, `/reviews`, `/announcements`, `/contacts`, `/site-stats` |
+You need two Vercel projects from this repo:
 
-Errors return `{ success: false, message }`; the client surfaces them as toasts.
+1. **API**: root directory `server`. `vercel.json` routes every request to `api/index.ts`. Set these env vars:
+   - Required: `MONGO_URI`, `JWT_SECRET`, `ROOT_DOMAIN`
+   - Optional: `DEFAULT_TENANT_SLUG`, `CLIENT_ORIGINS`, `REDIS_URL` (Upstash `rediss://…`), `CLOUDINARY_*`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`
+2. **Web**: root directory `client`, framework Vite. Set `VITE_API_URL=https://<your-api>.vercel.app`.
 
-## Project structure
+Gym addresses:
+- **Sub-domains.** Add `*.ROOT_DOMAIN` to the web project. Wildcards need Vercel nameservers.
+- **Custom domains.** Add them in `/platform`. If `VERCEL_TOKEN` and `VERCEL_PROJECT_ID` are set, they are attached to the web project automatically. The gym then points a CNAME at `cname.vercel-dns.com`.
+- **One `*.vercel.app` URL for a single gym.** Set `DEFAULT_TENANT_SLUG`.
 
-```
-GYM/
-├── server/
-│   ├── .env                  # MONGO_URI, JWT_SECRET, PORT
-│   └── src/
-│       ├── index.js          # express app + route mounting
-│       ├── config/db.js
-│       ├── middleware/auth.js
-│       ├── models/           # users, members, classes, equipment, finance, ops
-│       ├── routes/           # auth, dashboard, resources, ops, finance, classes, members, public
-│       └── seed/seed.js      # drops + repopulates demo data
-└── client/
-    └── src/
-        ├── lib/              # i18n (lang/currency), api client, auth context
-        ├── components/       # ui primitives, DataTable, Navbar, Footer, AuthShell, three/
-        ├── layouts/          # PublicLayout, DashboardLayout
-        └── pages/            # public pages + app/ dashboard modules
-```
+### Upgrading a v1 database
+v1 documents have no `tenantId`, and the v1 global unique indexes conflict with the new per-gym ones. Run `npm run seed -- --legacy` **once** against that database. It deletes the untenanted v1 demo documents, drops v1-only collections and rebuilds indexes. Back up first if any of that data is real.
 
 ## Scripts
 
 | Where | Command | Purpose |
 | --- | --- | --- |
-| `server` | `npm run dev` | API with `--watch` on :5000 |
-| `server` | `npm run seed` | **Drops** all collections and regenerates demo data |
-| `server` | `npm start` | API, production |
-| `client` | `npm run dev` | Vite dev server on :5173 |
-| `client` | `npm run build` / `npm run preview` | Production build / serve `dist` |
+| server | `npm run dev:memory` | API + in-memory MongoDB + demo data |
+| server | `npm run dev` / `npm run build` / `npm start` | Develop / compile / run |
+| server | `npm run seed` | Recreate the `demo` gym (other gyms untouched) |
+| server | `npm test` | Isolation, permission, pricing, publish and booking tests (in-memory MongoDB) |
+| client | `npm run dev` / `npm run build` | Develop / production build |
+
+## Adding modules later
+Classes, equipment, check-in, retail/POS, shifts and expenses already run on the same tenant plugin and permission system. To add a new module (payroll, mobile app API, …):
+1. Create a schema with `schema.plugin(tenantPlugin)`.
+2. Add permissions in `permissions.ts`.
+3. Mount a router under `/api/admin`.
+4. Add a nav item in `client/src/admin/AdminLayout.tsx`.

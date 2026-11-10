@@ -1,0 +1,33 @@
+# Local stack: MongoDB + Redis + API + web.  Usage:  docker compose up --build
+# Then seed once:  docker compose exec api npm run seed
+services:
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"]
+      interval: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build: ./server
+    env_file: [./server/.env.docker]
+    environment:
+      MONGO_URI: mongodb://mongo:27017/gym_platform?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    ports: ["5000:5000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_started }
+  web:
+    build: ./client
+    environment:
+      API_PROXY_TARGET: http://api:5000
+    ports: ["5173:5173"]
+    depends_on: [api]
+volumes:
+  mongo-data:

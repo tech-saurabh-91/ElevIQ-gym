@@ -2,174 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Neutral fallbacks until the gym's theme loads (overwritten at runtime by applyTheme). */
 :root {
-  color-scheme: dark;
+  --c-bg: 246 247 249; --c-surface: 255 255 255; --c-surface2: 238 240 243; --c-border: 221 225 231;
+  --c-text: 17 24 39; --c-muted: 75 85 99; --c-primary: 17 24 39; --c-onPrimary: 255 255 255;
+  --c-secondary: 55 65 81; --c-onSecondary: 255 255 255; --c-accent: 37 99 235; --c-onAccent: 255 255 255; --c-link: 29 78 216;
+  --font-body: 'Inter'; --font-display: 'Inter'; --radius: 0.75rem;
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  @apply bg-void text-bone font-sans antialiased selection:bg-mint/30 selection:text-white;
-  overflow-x: hidden;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: #08080e;
-}
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #00e5a0, #7b61ff);
-  border-radius: 99px;
-  border: 2px solid #08080e;
-}
-
-@layer components {
-  .container-x {
-    @apply mx-auto w-full max-w-[1280px] px-5 sm:px-8;
-  }
-
-  .glass {
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    @apply border border-white/10 backdrop-blur-xl;
-  }
-
-  .glass-strong {
-    background: rgba(10, 11, 18, 0.86);
-    @apply border border-white/10 backdrop-blur-2xl;
-  }
-
-  .card-3d {
-    transform-style: preserve-3d;
-    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s;
-  }
-  .card-3d:hover {
-    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.95);
-  }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold tracking-wide transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-  .btn-primary {
-    @apply btn bg-mint text-void shadow-glow hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0;
-  }
-  .btn-ghost {
-    @apply btn border border-white/15 bg-white/5 text-bone hover:border-mint/60 hover:bg-white/10 hover:-translate-y-0.5;
-  }
-  .btn-coral {
-    @apply btn bg-coral text-white shadow-glow-coral hover:-translate-y-0.5 hover:brightness-110;
-  }
-
-  .field {
-    @apply w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-bone outline-none transition placeholder:text-muted/70 focus:border-mint/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-mint/10;
-  }
-
-  .label {
-    @apply mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted;
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-muted;
-  }
-
-  .eyebrow {
-    @apply inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-mint;
-  }
-
-  .section-title {
-    @apply font-display text-3xl font-bold leading-[1.05] tracking-tight sm:text-5xl;
-  }
-
-  .text-gradient {
-    background: linear-gradient(100deg, #ffffff 0%, #00e5a0 45%, #7b61ff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .hairline {
-    @apply border border-white/10;
-  }
-
-  .table-shell {
-    @apply overflow-hidden rounded-2xl border border-white/10 bg-surface/70;
-  }
-  .table-shell table {
-    @apply w-full text-left text-sm;
-  }
-  .table-shell thead {
-    @apply bg-white/[0.04] text-[11px] uppercase tracking-[0.14em] text-muted;
-  }
-  .table-shell th {
-    @apply px-4 py-3 font-semibold;
-  }
-  .table-shell td {
-    @apply border-t border-white/[0.06] px-4 py-3 text-bone/90;
-  }
-  .table-shell tbody tr {
-    @apply transition hover:bg-white/[0.03];
-  }
-}
-
-@layer utilities {
-  .perspective-1200 {
-    perspective: 1200px;
-  }
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-  .backface-hidden {
-    backface-visibility: hidden;
-  }
-  .mask-fade-b {
-    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
-  }
-  .noise::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.045;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-  .grid-bg {
-    background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-    background-size: 62px 62px;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.14);
-    border: none;
-  }
-}
-
-/* Arabic / RTL support */
-[dir='rtl'] .flip-x {
-  transform: scaleX(-1);
-}
-[dir='rtl'] .table-shell th,
-[dir='rtl'] .table-shell td {
-  text-align: right;
-}
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-bg font-sans text-ink antialiased; }
+::selection { background: rgb(var(--c-primary) / 0.25); }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  aside, header, nav, .print\:hidden { display: none !important; }
+  main { padding: 0 !important; }
+  .lg\:pl-64 { padding-left: 0 !important; }
 }
