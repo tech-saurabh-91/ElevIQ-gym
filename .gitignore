@@ -8,3 +8,4 @@ dist/
 coverage/
 .claude/settings.local.json
 *.tsbuildinfo
+backups/
