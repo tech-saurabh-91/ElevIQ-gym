@@ -33,6 +33,8 @@ const invoiceSchema = new Schema(
 );
 invoiceSchema.plugin(tenantPlugin);
 invoiceSchema.index({ tenantId: 1, number: 1 }, { unique: true });
+invoiceSchema.index({ tenantId: 1, status: 1 });
+invoiceSchema.index({ tenantId: 1, issuedAt: -1 });
 
 const paymentSchema = new Schema(
   {
@@ -53,6 +55,7 @@ const paymentSchema = new Schema(
 );
 paymentSchema.plugin(tenantPlugin);
 paymentSchema.index({ tenantId: 1, receiptNo: 1 }, { unique: true });
+paymentSchema.index({ tenantId: 1, paidAt: 1 });
 
 const expenseSchema = new Schema(
   {
@@ -71,6 +74,7 @@ const expenseSchema = new Schema(
   { timestamps: true }
 );
 expenseSchema.plugin(tenantPlugin);
+expenseSchema.index({ tenantId: 1, paidAt: 1 });
 
 /** Per-tenant atomic sequences (member numbers, invoice numbers, receipts). */
 const counterSchema = new Schema({ key: { type: String, required: true }, seq: { type: Number, default: 0 } });

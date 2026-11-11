@@ -295,23 +295,42 @@ export const useToast = () => useContext(ToastCtx);
 
 /* ---------------------------------- hooks ---------------------------------- */
 
-/** Fetch helper: re-runs when `deps` change; exposes reload. */
-export function useLoad<T>(fn: (signal: AbortSignal) => Promise<T>, deps: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
+/* In-memory "stale-while-revalidate" cache: revisiting a page shows the last data instantly and
+   refreshes it in the background. Cleared on sign-in/sign-out so users never see each other's data. */
+const loadCache = new Map<string, unknown>();
+export const clearLoadCache = () => loadCache.clear();
+
+/**
+ * Fetch helper: re-runs when `deps` change; exposes reload.
+ * Pass `cacheKey` (unique per URL + filters) to show cached data immediately while refreshing.
+ */
+export function useLoad<T>(fn: (signal: AbortSignal) => Promise<T>, deps: unknown[], cacheKey?: string) {
+  const cached = cacheKey !== undefined && loadCache.has(cacheKey);
+  const [data, setData] = useState<T | null>(() => (cached ? (loadCache.get(cacheKey!) as T) : null));
   const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
+  const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const ac = new AbortController();
-    setLoading(true);
+    const hit = cacheKey !== undefined && loadCache.has(cacheKey);
+    if (hit) { setData(loadCache.get(cacheKey!) as T); setLoading(false); setRefreshing(true); }
+    else setLoading(true);
     fn(ac.signal)
-      .then((d) => { setData(d); setError(null); })
+      .then((d) => {
+        setData(d);
+        setError(null);
+        if (cacheKey !== undefined) {
+          if (loadCache.size > 200) loadCache.delete(loadCache.keys().next().value!);
+          loadCache.set(cacheKey, d);
+        }
+      })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
-      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+      .finally(() => { if (!ac.signal.aborted) { setLoading(false); setRefreshing(false); } });
     return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, tick]);
-  return { data, error, loading, reload: () => setTick((t) => t + 1), setData };
+  }, [...deps, cacheKey, tick]);
+  return { data, error, loading, refreshing, reload: () => setTick((t) => t + 1), setData };
 }
 
 export function useConfirm() {

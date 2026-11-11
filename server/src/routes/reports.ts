@@ -9,7 +9,8 @@ import { Invoice, Payment, Expense } from '../models/billing.js';
 import { CheckIn } from '../models/modules.js';
 import { refreshMemberStatuses } from './crm.js';
 import { monthKey, partsInTz, startOfDayTz, startOfMonthTz, zonedTime } from '../lib/time.js';
-import { buildWorkbook, safeFileName, type SheetSpec } from '../lib/excel.js';
+// ExcelJS is large: it is loaded only when someone actually exports, keeping cold starts fast.
+import type { SheetSpec } from '../lib/excel.js';
 
 /**
  * Every report is defined ONCE here (filters + data). The JSON endpoint, the dashboard charts and the
@@ -129,18 +130,26 @@ const moveQ = z.object({ months: z.coerce.number().int().min(1).max(24).default(
 async function movementData(c: Ctx, q: z.infer<typeof moveQ>) {
   await refreshMemberStatuses();
   const now = new Date();
-  const rows = [];
-  for (let i = q.months - 1; i >= 0; i -= 1) {
-    const start = startOfMonthTz(c.tz, now, -i);
-    const end = startOfMonthTz(c.tz, now, -i + 1);
-    const lapseEnd = end < now ? end : now;
-    const [joined, expired] = await Promise.all([
-      Member.countDocuments({ joinedAt: { $gte: start, $lt: end } }),
-      Member.countDocuments({ expiresAt: { $gte: start, $lt: lapseEnd } }),
-    ]);
-    rows.push({ month: monthKey(c.tz, start), joined, expired, net: joined - expired });
-  }
-  return rows;
+  const first = startOfMonthTz(c.tz, now, -(q.months - 1));
+  const end = startOfMonthTz(c.tz, now, 1);
+  const month = (field: string) => ({ $dateToString: { format: '%Y-%m', date: field, timezone: c.tz } });
+  // One round trip for every month (was 2 queries per month).
+  const [agg] = await Member.aggregate([
+    {
+      $facet: {
+        joined: [{ $match: { joinedAt: { $gte: first, $lt: end } } }, { $group: { _id: month('$joinedAt'), n: { $sum: 1 } } }],
+        expired: [{ $match: { expiresAt: { $gte: first, $lt: now } } }, { $group: { _id: month('$expiresAt'), n: { $sum: 1 } } }],
+      },
+    },
+  ]);
+  const j = new Map<string, number>(agg.joined.map((x: any) => [x._id, x.n]));
+  const e = new Map<string, number>(agg.expired.map((x: any) => [x._id, x.n]));
+  return Array.from({ length: q.months }, (_, i) => {
+    const key = monthKey(c.tz, startOfMonthTz(c.tz, now, i - (q.months - 1)));
+    const joined = j.get(key) ?? 0;
+    const expired = e.get(key) ?? 0;
+    return { month: key, joined, expired, net: joined - expired };
+  });
 }
 
 /* ------------------------------------ JSON ------------------------------------ */
@@ -245,6 +254,7 @@ for (const [name, def] of Object.entries(REPORTS)) {
   r.get(`/${name}/export`, guard, asyncHandler(async (req, res) => {
     const c = ctxOf(req);
     const out = await def.run(c, req.query);
+    const { buildWorkbook, safeFileName } = await import('../lib/excel.js');
     const buf = await buildWorkbook({ title: def.title, gymName: c.gym, filters: out.filters, currency: c.currency, locale: c.locale, timezone: c.tz, sheets: out.sheets });
     const file = `${safeFileName(c.gym)}-${name}-${ymdInTz(c.tz, new Date())}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

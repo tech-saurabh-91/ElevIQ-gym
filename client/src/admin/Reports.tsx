@@ -45,7 +45,7 @@ function Expiring() {
   const [fromDays, setFromDays] = useParam('fromDays', '0');
   const [lapsed, setLapsed] = useParam('lapsedDays', '0');
   const params = { days, fromDays: Number(lapsed) ? undefined : fromDays, lapsedDays: lapsed };
-  const d = useLoad((s) => api.get(`/admin/reports/expiring${qs(params)}`, s).then((r) => r.data as any[]), [days, fromDays, lapsed]);
+  const d = useLoad((s) => api.get(`/admin/reports/expiring${qs(params)}`, s).then((r) => r.data as any[]), [days, fromDays, lapsed], `rep:exp:${days}:${fromDays}:${lapsed}`);
   return (
     <Card padded={false}>
       <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
@@ -72,7 +72,7 @@ function Expiring() {
 
 function Demographics() {
   const [status, setStatus] = useParam('status', 'active');
-  const d = useLoad((s) => api.get(`/admin/reports/demographics?status=${status}`, s).then((r) => r.data), [status]);
+  const d = useLoad((s) => api.get(`/admin/reports/demographics?status=${status}`, s).then((r) => r.data), [status], `rep:demo:${status}`);
   const g = (d.data?.gender ?? []).map((x: any) => ({ name: cap(x._id ?? 'unspecified'), value: x.count }));
   return (
     <>
@@ -115,7 +115,7 @@ function Collections() {
   const [to, setTo] = useParam('to', '');
   const [groupBy, setGroupBy] = useParam('groupBy', 'day');
   const params = { from: from || undefined, to: to || undefined, groupBy };
-  const d = useLoad((s) => api.get(`/admin/reports/collections${qs(params)}`, s).then((r) => r.data), [from, to, groupBy]);
+  const d = useLoad((s) => api.get(`/admin/reports/collections${qs(params)}`, s).then((r) => r.data), [from, to, groupBy], `rep:coll:${from}:${to}:${groupBy}`);
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -163,7 +163,7 @@ function Collections() {
 
 function Movement() {
   const [months, setMonths] = useParam('months', '6');
-  const d = useLoad((s) => api.get(`/admin/reports/movement?months=${months}`, s).then((r) => r.data as any[]), [months]);
+  const d = useLoad((s) => api.get(`/admin/reports/movement?months=${months}`, s).then((r) => r.data as any[]), [months], `rep:move:${months}`);
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">

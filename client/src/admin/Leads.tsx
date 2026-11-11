@@ -15,7 +15,7 @@ export default function Leads() {
   const nav = useNavigate();
   const [status, setStatus] = useState('new');
   const [page, setPage] = useState(1);
-  const list = useLoad((s) => api.get(`/admin/leads${qs({ status, page, limit: 25 })}`, s), [status, page]);
+  const list = useLoad((s) => api.get(`/admin/leads${qs({ status, page, limit: 25 })}`, s), [status, page], `leads:${status}:${page}`);
   const [edit, setEdit] = useState<any | null>(null);
   const [err, setErr] = useState<unknown>(null);
 

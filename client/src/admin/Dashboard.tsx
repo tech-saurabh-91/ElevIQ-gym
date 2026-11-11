@@ -59,7 +59,7 @@ const EXPIRY_BUCKETS = [[0, 7, 'Next 7 days'], [7, 14, '8-14 days'], [14, 30, '1
 export default function Dashboard() {
   const nav = useNavigate();
   const { session, can } = useAuth();
-  const k = useLoad((s) => api.get('/admin/reports/dashboard', s).then((r) => r.data), []);
+  const k = useLoad((s) => api.get('/admin/reports/dashboard', s).then((r) => r.data), [], 'dash:kpis');
   const canMoney = can('billing.read');
   const canReports = can('reports.read');
   const canExpiry = can('reports.read', 'members.read');
@@ -70,11 +70,11 @@ export default function Dashboard() {
   const revenueParams = today && monthStart ? { from: `${addMonths(monthStart.slice(0, 7), -11)}-01`, to: today, groupBy: 'month' } : null;
   const modeParams = today && monthStart ? { from: monthStart, to: today, groupBy: 'day' } : null;
 
-  const revenue = useLoad((s) => (canMoney && revenueParams ? api.get(`/admin/reports/collections${qs(revenueParams)}`, s).then((r) => r.data) : Promise.resolve(null)), [canMoney, revenueParams?.from, revenueParams?.to]);
-  const modes = useLoad((s) => (canMoney && modeParams ? api.get(`/admin/reports/collections${qs(modeParams)}`, s).then((r) => r.data) : Promise.resolve(null)), [canMoney, modeParams?.from, modeParams?.to]);
-  const movement = useLoad((s) => (canReports ? api.get('/admin/reports/movement?months=6', s).then((r) => r.data as any[]) : Promise.resolve(null)), [canReports]);
-  const demo = useLoad((s) => (canReports ? api.get('/admin/reports/demographics?status=active', s).then((r) => r.data) : Promise.resolve(null)), [canReports]);
-  const expiry = useLoad((s) => (canExpiry ? api.get('/admin/reports/expiring?days=90', s).then((r) => r.data as any[]) : Promise.resolve(null)), [canExpiry]);
+  const revenue = useLoad((s) => (canMoney && revenueParams ? api.get(`/admin/reports/collections${qs(revenueParams)}`, s).then((r) => r.data) : Promise.resolve(null)), [canMoney, revenueParams?.from, revenueParams?.to], `dash:rev:${revenueParams?.from}:${revenueParams?.to}`);
+  const modes = useLoad((s) => (canMoney && modeParams ? api.get(`/admin/reports/collections${qs(modeParams)}`, s).then((r) => r.data) : Promise.resolve(null)), [canMoney, modeParams?.from, modeParams?.to], `dash:modes:${modeParams?.from}:${modeParams?.to}`);
+  const movement = useLoad((s) => (canReports ? api.get('/admin/reports/movement?months=6', s).then((r) => r.data as any[]) : Promise.resolve(null)), [canReports], 'dash:movement');
+  const demo = useLoad((s) => (canReports ? api.get('/admin/reports/demographics?status=active', s).then((r) => r.data) : Promise.resolve(null)), [canReports], 'dash:demo');
+  const expiry = useLoad((s) => (canExpiry ? api.get('/admin/reports/expiring?days=90', s).then((r) => r.data as any[]) : Promise.resolve(null)), [canExpiry], 'dash:expiry');
 
   if (k.loading) return <Spinner />;
   const d = k.data;

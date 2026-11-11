@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, tokens } from './api';
+import { clearLoadCache } from '@/components/ui';
 import type { Permission, SessionUser } from './types';
 
 type Session = { user: SessionUser; permissions: Permission[]; tenant: { name: string; slug: string; setupCompleted: boolean }; impersonatedBy?: string | null };
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<Session & { token: string }>('/auth/login', { email, password });
     tokens.set(res.token);
+    clearLoadCache();
     const s = { user: res.user, permissions: res.permissions, tenant: res.tenant };
     setSession(s);
     return s;
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     tokens.set(null);
+    clearLoadCache();
     setSession(null);
   }, []);
 

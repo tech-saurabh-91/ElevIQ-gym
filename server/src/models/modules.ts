@@ -97,6 +97,7 @@ const checkInSchema = new Schema(
   { timestamps: true }
 );
 checkInSchema.plugin(tenantPlugin);
+checkInSchema.index({ tenantId: 1, inAt: 1 });
 
 const productSchema = new Schema(
   {

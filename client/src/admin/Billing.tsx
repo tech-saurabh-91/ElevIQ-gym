@@ -16,8 +16,8 @@ export default function Billing() {
   const [status, setStatus] = useState('all');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
-  const inv = useLoad((s) => (tab === 'invoices' ? api.get(`/admin/billing/invoices${qs({ status, q, page, limit: 25 })}`, s) : Promise.resolve(null)), [tab, status, q, page]);
-  const pay = useLoad((s) => (tab === 'payments' && can('billing.read') ? api.get(`/admin/billing/payments${qs({ page, limit: 25 })}`, s) : Promise.resolve(null)), [tab, page]);
+  const inv = useLoad((s) => (tab === 'invoices' ? api.get(`/admin/billing/invoices${qs({ status, q, page, limit: 25 })}`, s) : Promise.resolve(null)), [tab, status, q, page], `invoices:${tab}:${status}:${q}:${page}`);
+  const pay = useLoad((s) => (tab === 'payments' && can('billing.read') ? api.get(`/admin/billing/payments${qs({ page, limit: 25 })}`, s) : Promise.resolve(null)), [tab, page], `payments:${tab}:${page}`);
 
   return (
     <>

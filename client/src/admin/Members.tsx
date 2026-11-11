@@ -59,7 +59,7 @@ export default function Members() {
   const [status, setStatus] = useState(() => new URLSearchParams(window.location.search).get('status') ?? 'all');
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
-  const list = useLoad((s) => api.get(`/admin/members${qs({ q, status, page, limit: 25 })}`, s), [q, status, page]);
+  const list = useLoad((s) => api.get(`/admin/members${qs({ q, status, page, limit: 25 })}`, s), [q, status, page], `members:${q}:${status}:${page}`);
 
   return (
     <>
@@ -101,7 +101,7 @@ export function MemberDetail() {
   const toast = useToast();
   const nav = useNavigate();
   const { confirm, dialog } = useConfirm();
-  const d = useLoad((s) => api.get(`/admin/members/${id}`, s).then((r) => r.data), [id]);
+  const d = useLoad((s) => api.get(`/admin/members/${id}`, s).then((r) => r.data), [id], `member:${id}`);
   const [editing, setEditing] = useState(false);
   const [selling, setSelling] = useState(false);
   const [paying, setPaying] = useState<any>(null);

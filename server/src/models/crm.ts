@@ -20,6 +20,8 @@ const leadSchema = new Schema(
   { timestamps: true }
 );
 leadSchema.plugin(tenantPlugin);
+leadSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
+leadSchema.index({ tenantId: 1, createdAt: -1 });
 
 const memberSchema = new Schema(
   {
@@ -53,6 +55,11 @@ const memberSchema = new Schema(
 memberSchema.plugin(tenantPlugin);
 memberSchema.index({ tenantId: 1, memberNo: 1 }, { unique: true });
 memberSchema.index({ tenantId: 1, qrToken: 1 }, { unique: true });
+// Dashboard / report queries always filter by gym first.
+memberSchema.index({ tenantId: 1, status: 1, expiresAt: 1 });
+memberSchema.index({ tenantId: 1, joinedAt: 1 });
+memberSchema.index({ tenantId: 1, createdAt: -1 });
+memberSchema.index({ tenantId: 1, expiresAt: 1 });
 
 /** One purchased period of a plan. */
 const membershipSchema = new Schema(

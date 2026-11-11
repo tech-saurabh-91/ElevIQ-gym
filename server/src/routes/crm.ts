@@ -8,11 +8,22 @@ import { Lead, Member, Membership } from '../models/crm.js';
 import { Invoice, Payment } from '../models/billing.js';
 import { CheckIn } from '../models/modules.js';
 import { User } from '../models/user.js';
+import { currentTenantId } from '../lib/tenantContext.js';
 
 const r = Router();
 
 /** Flip members whose period has ended to `expired`. Cheap (indexed) and idempotent. */
-export async function refreshMemberStatuses() {
+const lastRefresh = new Map<string, number>();
+/**
+ * Runs at most once a minute per gym (per server instance). The dashboard fires several report
+ * requests at once; each used to issue the same write, which added a slow round trip to every call.
+ */
+export async function refreshMemberStatuses(force = false) {
+  const key = String(currentTenantId() ?? 'none');
+  const now = Date.now();
+  if (!force && now - (lastRefresh.get(key) ?? 0) < 60_000) return;
+  lastRefresh.set(key, now);
+  if (lastRefresh.size > 5000) lastRefresh.clear();
   await Member.updateMany({ status: 'active', expiresAt: { $lt: new Date() } }, { $set: { status: 'expired' } });
 }
 
