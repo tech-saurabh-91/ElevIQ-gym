@@ -43,6 +43,9 @@ r.use(
     sortable: ['createdAt', 'followUpAt', 'name'],
     read: [requirePermission('leads.read', 'leads.manage')],
     write: [requirePermission('leads.manage')],
+    // "Converted" must mean a member really exists; use POST /leads/:id/convert to set it.
+    check: (l) =>
+      l.status === 'converted' && !l.convertedMember ? 'To mark a lead as converted, use "Convert to member" so the member record is created.' : null,
   })
 );
 

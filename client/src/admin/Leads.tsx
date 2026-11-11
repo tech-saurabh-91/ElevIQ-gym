@@ -19,19 +19,32 @@ export default function Leads() {
   const [edit, setEdit] = useState<any | null>(null);
   const [err, setErr] = useState<unknown>(null);
 
+  const convertLead = async (id: string) => {
+    const r = await api.post(`/admin/leads/${id}/convert`, {});
+    toast('Member created - now sell them a membership');
+    nav(`/admin/members/${r.data._id}`);
+  };
+
   const save = async () => {
     setErr(null);
+    // Choosing "Converted" means: create the member. Save the other edits first, then convert.
+    const wantsConvert = edit.status === 'converted' && !edit.convertedMember;
+    if (wantsConvert && !can('members.write')) {
+      setErr(new Error('Your role cannot create members. Ask a manager or the front desk to convert this lead.'));
+      return;
+    }
     try {
-      const body = { name: edit.name, phone: edit.phone, email: edit.email, message: edit.message, status: edit.status, notes: edit.notes, source: edit.source, followUpAt: edit.followUpAt || undefined };
-      if (edit._id) await api.put(`/admin/leads/${edit._id}`, body); else await api.post('/admin/leads', body);
+      const status = wantsConvert ? (edit._original && edit._original !== 'converted' ? edit._original : 'contacted') : edit.status;
+      const body = { name: edit.name, phone: edit.phone, email: edit.email, message: edit.message, status, notes: edit.notes, source: edit.source, followUpAt: edit.followUpAt || undefined };
+      let id = edit._id;
+      if (id) await api.put(`/admin/leads/${id}`, body);
+      else id = (await api.post('/admin/leads', body)).data._id;
+      if (wantsConvert) return await convertLead(id);
       toast('Lead saved'); setEdit(null); list.reload();
     } catch (e) { setErr(e); }
   };
   const convert = async () => {
-    try {
-      const r = await api.post(`/admin/leads/${edit._id}/convert`, {});
-      toast('Member created - now sell them a membership'); nav(`/admin/members/${r.data._id}`);
-    } catch (e) { setErr(e); }
+    try { await convertLead(edit._id); } catch (e) { setErr(e); }
   };
 
   return (
@@ -43,7 +56,7 @@ export default function Leads() {
         <Table
           loading={list.loading}
           rows={list.data?.data ?? []}
-          onRowClick={(l: any) => { setErr(null); setEdit({ ...l, followUpAt: l.followUpAt ? String(l.followUpAt).slice(0, 10) : '' }); }}
+          onRowClick={(l: any) => { setErr(null); setEdit({ ...l, _original: l.status, followUpAt: l.followUpAt ? String(l.followUpAt).slice(0, 10) : '' }); }}
           empty="No leads here."
           columns={[
             { key: 'n', header: 'Name', render: (l: any) => <div className="font-semibold">{l.name}</div> },
@@ -64,8 +77,9 @@ export default function Leads() {
         title={edit?._id ? edit.name : 'New lead'}
         footer={
           <>
+            {edit?.convertedMember && <Button variant="outline" onClick={() => nav(`/admin/members/${edit.convertedMember}`)}>View member</Button>}
             {edit?._id && edit.status !== 'converted' && can('members.write') && <Button variant="outline" icon={<UserCheck className="h-4 w-4" />} onClick={convert}>Convert to member</Button>}
-            {can('leads.manage') && <Button onClick={save}>Save</Button>}
+            {can('leads.manage') && <Button onClick={save}>{edit?.status === 'converted' && !edit?.convertedMember ? 'Save & create member' : 'Save'}</Button>}
           </>
         }
       >
@@ -74,7 +88,9 @@ export default function Leads() {
             <Field label="Name" className="sm:col-span-2"><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <Field label="Phone"><Input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
             <Field label="Email"><Input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
-            <Field label="Status"><Select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>{STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}</Select></Field>
+            <Field label="Status" hint={edit.status === 'converted' && !edit.convertedMember ? 'Saving will create a member from this lead.' : undefined}>
+              <Select value={edit.status} disabled={Boolean(edit.convertedMember)} onChange={(e) => setEdit({ ...edit, status: e.target.value })}>{STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}</Select>
+            </Field>
             <Field label="Follow-up date"><Input type="date" value={edit.followUpAt ?? ''} onChange={(e) => setEdit({ ...edit, followUpAt: e.target.value })} /></Field>
             {edit.message && <div className="sm:col-span-2 rounded-brand bg-surface2 p-3 text-sm whitespace-pre-line">{edit.message}</div>}
             <Field label="Notes" className="sm:col-span-2"><Textarea rows={3} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} /></Field>

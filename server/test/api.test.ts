@@ -146,6 +146,20 @@ describe('website forms create leads only', () => {
     expect(leads.body.data.some((l: any) => l.name === 'Walk In')).toBe(true);
   });
 
+  it('"converted" always means a real member exists', async () => {
+    const lead = (await call(A, tokens.manager).post('/api/admin/leads', { name: 'Ravi Kumar', phone: '9000000000' })).body.data;
+    // Setting the label alone is refused...
+    expect((await call(A, tokens.manager).put(`/api/admin/leads/${lead._id}`, { status: 'converted' })).status).toBe(400);
+    // ...converting creates the member and links it.
+    const conv = await call(A, tokens.manager).post(`/api/admin/leads/${lead._id}/convert`);
+    expect(conv.status).toBe(201);
+    expect(conv.body.data.firstName).toBe('Ravi');
+    const after = (await call(A, tokens.manager).get(`/api/admin/leads/${lead._id}`)).body.data;
+    expect(after.status).toBe('converted');
+    expect(after.convertedMember).toBe(conv.body.data._id);
+    expect((await call(A, tokens.manager).post(`/api/admin/leads/${lead._id}/convert`)).status).toBe(409);
+  });
+
   it('honeypot blocks bots', async () => {
     const r = await call(A).post('/api/public/leads', { name: 'Bot', phone: '1', website: 'spam' });
     expect(r.status).toBe(400);
