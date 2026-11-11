@@ -15,6 +15,23 @@ const FONTS: Record<string, { body: string; display: string; url: string }> = {
 
 export type Mode = 'light' | 'dark';
 
+/**
+ * One standard colour scheme for every gym's admin panel (and the vendor console).
+ * It never changes with the logo. All text/background pairs pass WCAG AA (4.5:1).
+ */
+export const ADMIN_THEME: Theme = {
+  seed: { primary: '#4338ca', secondary: '#0f766e', accent: '#b45309' },
+  light: {
+    bg: '#f5f6f8', surface: '#ffffff', surface2: '#eef0f4', border: '#dde1e8', text: '#111827', muted: '#4b5563',
+    primary: '#4338ca', onPrimary: '#ffffff', secondary: '#0f766e', onSecondary: '#ffffff', accent: '#b45309', onAccent: '#ffffff', link: '#4338ca',
+  },
+  dark: {
+    bg: '#0b0f17', surface: '#111827', surface2: '#1c2433', border: '#2b3445', text: '#f3f4f6', muted: '#a3abb8',
+    primary: '#818cf8', onPrimary: '#0b0f17', secondary: '#2dd4bf', onSecondary: '#0b0f17', accent: '#fbbf24', onAccent: '#0b0f17', link: '#a5b4fc',
+  },
+  checks: [],
+};
+
 export function resolveMode(pref: 'light' | 'dark' | 'auto'): Mode {
   let user: string | null = null;
   try { user = localStorage.getItem('gym.mode'); } catch { /* ignore */ }

@@ -56,7 +56,7 @@ export default function Members() {
   const { can } = useAuth();
   const nav = useNavigate();
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState(() => new URLSearchParams(window.location.search).get('status') ?? 'all');
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const list = useLoad((s) => api.get(`/admin/members${qs({ q, status, page, limit: 25 })}`, s), [q, status, page]);

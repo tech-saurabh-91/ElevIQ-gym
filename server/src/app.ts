@@ -50,6 +50,7 @@ export function createApp() {
         originAllowed(origin).then((ok) => cb(null, ok), () => cb(null, false));
       },
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Host'],
+      exposedHeaders: ['Content-Disposition'],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       maxAge: 600,
     })

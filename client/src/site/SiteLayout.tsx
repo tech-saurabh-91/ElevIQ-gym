@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Clock, Mail, MapPin, Menu, Moon, Phone, Sun, X } from 'lucide-react';
 import { useSite, isPreview } from '@/lib/site';
@@ -6,16 +6,18 @@ import { DAY_NAMES, time } from '@/lib/format';
 import { Button, cx } from '@/components/ui';
 import type { PublicOffer, SiteContent } from '@/lib/types';
 import { offerLabel } from './offers';
+import { useScrolled } from './motion';
 
-export function Logo({ className = 'h-9' }: { className?: string }) {
+/** Gym logo (or name). `onDark` prefers the light-on-dark logo, e.g. over the hero photo. */
+export function Logo({ className = 'h-9', onDark = false }: { className?: string; onDark?: boolean }) {
   const { site, mode } = useSite();
   if (!site) return null;
   const b = site.site.brand;
-  const src = mode === 'dark' && b.logoDarkUrl ? b.logoDarkUrl : b.logoUrl;
+  const src = (onDark || mode === 'dark') && b.logoDarkUrl ? b.logoDarkUrl : b.logoUrl;
   return src ? (
     <img src={src} alt={b.name} className={cx('w-auto object-contain', className)} />
   ) : (
-    <span className="font-display text-xl font-extrabold tracking-tight text-ink">{b.name}</span>
+    <span className={cx('font-display text-xl font-extrabold tracking-tight', onDark ? 'text-white' : 'text-ink')}>{b.name}</span>
   );
 }
 
@@ -108,11 +110,23 @@ export default function SiteLayout() {
   const { site, mode, toggleMode } = useSite();
   const [menu, setMenu] = useState(false);
   const loc = useLocation();
+  const scrolled = useScrolled(40);
+  const headerRef = useRef<HTMLDivElement>(null);
   useEffect(() => setMenu(false), [loc.pathname, loc.hash]);
   useEffect(() => {
     if (loc.hash) document.getElementById(loc.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' });
     else window.scrollTo({ top: 0 });
   }, [loc.pathname, loc.hash]);
+  // Publish the fixed header's height so pages without a hero can pad below it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [site]);
   if (!site) return null;
   const c = site.site;
   const bar = c.sections.offers ? site.offers.find((o) => o.display.bar) : undefined;
@@ -124,43 +138,55 @@ export default function SiteLayout() {
     c.sections.faq && c.faq.length > 0 && { to: '/#faq', label: 'FAQ' },
     { to: '/contact', label: 'Contact' },
   ].filter(Boolean) as { to: string; label: string }[];
+  // Transparent header only on the homepage, over a photo hero, before scrolling and with the menu closed.
+  const heroImage = loc.pathname === '/' && c.banners.some((b) => b.active && b.imageUrl);
+  const clear = heroImage && !scrolled && !menu;
 
   return (
     <div className="min-h-screen bg-bg font-sans text-ink">
-      {isPreview() && (
-        <div className="sticky top-0 z-50 bg-amber-400 px-4 py-1.5 text-center text-xs font-bold text-black">
-          Preview of unpublished changes. Visitors still see the live site.
-        </div>
-      )}
-      {bar && <OfferBar offer={bar} />}
-      <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2" aria-label={`${c.brand.name} home`}><Logo /></Link>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
-            {nav.map((n) => (
-              <NavLink key={n.to} to={n.to} className="rounded-full px-3 py-2 text-sm font-medium text-muted transition hover:text-ink">{n.label}</NavLink>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleMode} aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`} className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-surface2 hover:text-ink">
-              {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <Link to="/login" className="hidden text-sm font-medium text-muted hover:text-ink sm:block">Sign in</Link>
-            <Link to="/join" className="hidden sm:block"><Button>Join now</Button></Link>
-            <button className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface2 md:hidden" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
-              {menu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+      <div ref={headerRef} className="fixed inset-x-0 top-0 z-40">
+        {isPreview() && (
+          <div className="bg-amber-400 px-4 py-1.5 text-center text-xs font-bold text-black">
+            Preview of unpublished changes. Visitors still see the live site.
           </div>
-        </div>
-        {menu && (
-          <nav className="border-t border-line bg-bg px-4 py-3 md:hidden" aria-label="Mobile">
-            {nav.map((n) => <Link key={n.to} to={n.to} className="block rounded-brand px-3 py-2.5 text-sm font-medium hover:bg-surface2">{n.label}</Link>)}
-            <Link to="/login" className="block rounded-brand px-3 py-2.5 text-sm font-medium hover:bg-surface2">Sign in</Link>
-            <Link to="/join" className="mt-2 block"><Button className="w-full">Join now</Button></Link>
-          </nav>
         )}
-      </header>
+        {bar && <OfferBar offer={bar} />}
+        <header
+          className={cx(
+            'transition-[background-color,box-shadow,border-color] duration-300',
+            clear ? 'border-b border-transparent bg-transparent text-white' : 'border-b border-line/70 bg-bg/90 text-ink shadow-sm backdrop-blur-md'
+          )}
+        >
+          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:h-[72px] sm:px-6">
+            <Link to="/" className="flex items-center gap-2" aria-label={`${c.brand.name} home`}><Logo onDark={clear} className="h-9 sm:h-10" /></Link>
+            <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+              {nav.map((n) => (
+                <NavLink key={n.to} to={n.to} className={cx('rounded-full px-3 py-2 text-sm font-medium transition', clear ? 'text-white/85 hover:text-white' : 'text-muted hover:text-ink')}>{n.label}</NavLink>
+              ))}
+            </nav>
+            <div className="flex items-center gap-2">
+              <button onClick={toggleMode} aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`} className={cx('grid h-9 w-9 place-items-center rounded-full transition', clear ? 'text-white/85 hover:bg-white/15' : 'text-muted hover:bg-surface2 hover:text-ink')}>
+                {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <Link to="/login" className={cx('hidden text-sm font-medium sm:block', clear ? 'text-white/85 hover:text-white' : 'text-muted hover:text-ink')}>Sign in</Link>
+              <Link to="/join" className="hidden sm:block"><Button>Join now</Button></Link>
+              <button className={cx('grid h-9 w-9 place-items-center rounded-full md:hidden', clear ? 'hover:bg-white/15' : 'hover:bg-surface2')} aria-label="Menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+                {menu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+          {menu && (
+            <nav className="animate-fade border-t border-line bg-bg px-4 py-3 text-ink md:hidden" aria-label="Mobile">
+              {nav.map((n) => <Link key={n.to} to={n.to} className="block rounded-brand px-3 py-2.5 text-sm font-medium hover:bg-surface2">{n.label}</Link>)}
+              <Link to="/login" className="block rounded-brand px-3 py-2.5 text-sm font-medium hover:bg-surface2">Sign in</Link>
+              <Link to="/join" className="mt-2 block"><Button className="w-full">Join now</Button></Link>
+            </nav>
+          )}
+        </header>
+      </div>
 
+      {/* Pages with a photo hero sit under the transparent header; the rest start below it. */}
+      <div style={heroImage ? undefined : { height: 'var(--header-h, 72px)' }} aria-hidden />
       <main><Outlet /></main>
 
       <footer className="mt-24 border-t border-line bg-surface">

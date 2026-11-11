@@ -84,6 +84,32 @@ export const api = {
   },
 };
 
+/**
+ * Download a file (e.g. an Excel export) from an authenticated endpoint and save it.
+ * The server decides the file name and checks permissions; a 403 surfaces as an ApiError.
+ */
+export async function download(path: string): Promise<string> {
+  const headers: Record<string, string> = { 'X-Tenant-Host': window.location.hostname };
+  const slug = tenantSlugHint();
+  if (slug) headers['X-Tenant'] = slug;
+  const token = tokens.get();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${BASE}${path}`, { headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    if (res.status === 401 && token) { tokens.set(null); window.dispatchEvent(new CustomEvent('auth:unauthorized')); }
+    throw new ApiError(body?.message || `Download failed (${res.status})`, res.status);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'report.xlsx';
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return name;
+}
+
 export const qs = (params: Record<string, unknown>) => {
   const s = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== '' && v !== 'all') s.append(k, String(v));

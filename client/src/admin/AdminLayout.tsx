@@ -5,7 +5,7 @@ import {
   Moon, Package, ScanLine, Settings, ShieldCheck, Sparkles, Tag, UserPlus, Users, X, Sun, Wand2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { useSite } from '@/lib/site';
+import { useAdminTheme, useSite } from '@/lib/site';
 import { cx } from '@/components/ui';
 import { Logo } from '@/site/SiteLayout';
 import type { Permission } from '@/lib/types';
@@ -62,10 +62,13 @@ export function firstAllowed(can: (...p: Permission[]) => boolean) {
 
 export default function AdminLayout() {
   const { session, loading, can, logout } = useAuth();
-  const { mode, toggleMode } = useSite();
+  const { mode, toggleMode, site } = useSite();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
+  // The admin panel always uses the standard scheme; only the gym's logo and name are shown.
+  useAdminTheme();
+  const brand = site?.site.brand;
 
   if (loading) return null;
   if (!session) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
@@ -74,8 +77,11 @@ export default function AdminLayout() {
 
   const sidebar = (
     <nav className="flex h-full flex-col" aria-label="Admin">
-      <div className="flex h-16 items-center justify-between px-5">
-        <Link to="/admin"><Logo className="h-8" /></Link>
+      <div className="flex h-16 items-center justify-between gap-2 px-5">
+        <Link to="/admin" className="flex min-w-0 items-center gap-2.5" aria-label={`${brand?.name ?? 'Gym'} admin home`}>
+          {brand?.logoUrl ? <img src={mode === 'dark' && brand.logoDarkUrl ? brand.logoDarkUrl : brand.logoUrl} alt="" className="h-8 w-auto max-w-[96px] object-contain" /> : null}
+          <span className="truncate text-sm font-bold text-ink">{brand?.name}</span>
+        </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu"><X className="h-5 w-5" /></button>
       </div>
       <div className="flex-1 overflow-y-auto px-3 pb-4">

@@ -14,7 +14,31 @@ html { -webkit-text-size-adjust: 100%; }
 body { @apply bg-bg font-sans text-ink antialiased; }
 ::selection { background: rgb(var(--c-primary) / 0.25); }
 
+/* ------------------------------ website motion ------------------------------ */
+.reveal { opacity: 0; transform: translate3d(0, 28px, 0); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
+.reveal-in { opacity: 1; transform: none; }
+
+/* Slow "Ken Burns" zoom on hero photos. */
+@keyframes kenburns { from { transform: scale(1.0); } to { transform: scale(1.12); } }
+.kenburns { animation: kenburns 14s ease-out both; transform-origin: 60% 40%; }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade { animation: fade-in .5s ease both; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.animate-bob { animation: bob 2s ease-in-out infinite; }
+
+/* Corner ribbon used for offers on plan cards and offer banners. */
+.ribbon { position: absolute; top: 18px; right: -42px; width: 160px; transform: rotate(45deg); text-align: center; padding: 6px 0;
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 4px 12px rgb(0 0 0 / .2); z-index: 2; }
+
+/* Horizontal carousel without a library: native scroll-snap, hidden scrollbar. */
+.snap-track { display: flex; gap: 1.25rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.snap-track::-webkit-scrollbar { display: none; }
+.snap-track > * { scroll-snap-align: start; flex: 0 0 auto; }
+
 @media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+  .kenburns, .animate-bob { animation: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 

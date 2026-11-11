@@ -278,6 +278,55 @@ describe('vendor console', () => {
   });
 });
 
+describe('reports and Excel export', () => {
+  const bin = (r: request.Test) => r.buffer(true).parse((res, cb) => { const c: Buffer[] = []; res.on('data', (d: Buffer) => c.push(d)); res.on('end', () => cb(null, Buffer.concat(c))); });
+
+  it('exports a styled .xlsx with title, filters, headers and totals that match the JSON report', async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const json = (await call(A, tokens.accountant).get('/api/admin/reports/collections?groupBy=month')).body.data;
+    const res = await bin(call(A, tokens.accountant).get('/api/admin/reports/collections/export?groupBy=month'));
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('spreadsheetml');
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename=".*collections.*\.xlsx"/);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(res.body);
+    const ws = wb.getWorksheet('By month')!;
+    expect(String(ws.getCell('A1').value)).toContain('Collections');
+    expect(String(ws.getCell('A3').value)).toContain('Grouped by month');
+    expect(ws.getCell('C5').value).toBe('Net collected');
+    const totalRow = ws.getRow(6 + json.series.length);
+    expect(totalRow.getCell(1).value).toBe('Total');
+    expect((totalRow.getCell(3).value as any).result).toBe(json.net);
+    expect(ws.getCell('C6').numFmt).toContain('#,##0');
+    const payments = wb.getWorksheet('Payments')!;
+    expect(payments.getCell('A6').numFmt).toBe('dd-mmm-yyyy hh:mm');
+  });
+
+  it('only roles that can see a report can export it', async () => {
+    expect((await call(A, tokens.frontdesk).get('/api/admin/reports/collections/export')).status).toBe(403);
+    expect((await call(A, tokens.editor).get('/api/admin/reports/demographics/export')).status).toBe(403);
+    expect((await call(A, tokens.frontdesk).get('/api/admin/reports/expiring/export')).status).toBe(200);
+    expect((await call(A).get('/api/admin/reports/expiring/export')).status).toBe(401);
+  });
+
+  it('movement and expiry-window reports work, and filters are validated', async () => {
+    const mv = (await call(A, tokens.manager).get('/api/admin/reports/movement?months=3')).body.data;
+    expect(mv).toHaveLength(3);
+    expect(mv[2].joined).toBeGreaterThanOrEqual(2);
+    expect((await call(A, tokens.manager).get('/api/admin/reports/expiring?fromDays=10&days=40')).status).toBe(200);
+    expect((await call(A, tokens.manager).get('/api/admin/reports/collections?from=bad')).status).toBe(400);
+    const dash = (await call(A, tokens.a).get('/api/admin/reports/dashboard')).body.data;
+    expect(dash.trends.collected.value).toBeGreaterThan(0);
+  });
+
+  it('gym time-zone helpers', async () => {
+    const { zonedTime, startOfMonthTz } = await import('../src/lib/time.js');
+    expect(zonedTime('Asia/Kolkata', 2026, 1, 1).toISOString()).toBe('2025-12-31T18:30:00.000Z');
+    expect(zonedTime('Africa/Nairobi', 2026, 3, 1).toISOString()).toBe('2026-02-28T21:00:00.000Z');
+    expect(startOfMonthTz('UTC', new Date('2026-05-17T10:00:00Z'), -1).toISOString()).toBe('2026-04-01T00:00:00.000Z');
+  });
+});
+
 describe('theme generator', () => {
   it('passes WCAG AA for awkward brand colours', () => {
     for (const primary of ['#ffff00', '#00ff00', '#1a1a1a', '#ff69b4', '#808080', '#0000ff', '#ffffff']) {

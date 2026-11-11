@@ -3,14 +3,10 @@ import { Building2, ExternalLink, Globe, LifeBuoy, LogOut, Plus, Search, Trash2 
 import { api, tokens } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { Badge, Button, Card, ErrorNote, Field, Input, Modal, PageHeader, Select, Spinner, Table, statusTone, useLoad, useToast } from '@/components/ui';
-import { applyTheme } from '@/lib/theme';
+import { ADMIN_THEME, applyTheme } from '@/lib/theme';
 import { CURRENCIES, LOCALES } from '@/admin/Settings';
 
-// The vendor console uses a fixed neutral theme - it is not any gym's brand.
-const NEUTRAL = {
-  bg: '#f5f6f8', surface: '#ffffff', surface2: '#eef0f3', border: '#dde1e7', text: '#111827', muted: '#4b5563',
-  primary: '#111827', onPrimary: '#ffffff', secondary: '#374151', onSecondary: '#ffffff', accent: '#2563eb', onAccent: '#ffffff', link: '#1d4ed8',
-};
+// The vendor console uses the same standard admin scheme - it is not any gym's brand.
 
 function PlatformLogin({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState('');
@@ -98,7 +94,7 @@ export default function Platform() {
   const [creating, setCreating] = useState<any>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
-  useEffect(() => { applyTheme({ seed: { primary: '#111827', secondary: '#374151', accent: '#2563eb' }, light: NEUTRAL, dark: NEUTRAL, checks: [] }, 'light'); document.title = 'Platform console'; }, []);
+  useEffect(() => { applyTheme(ADMIN_THEME, 'light'); document.title = 'Platform console'; }, []);
   useEffect(() => {
     const off = () => setAuthed(false);
     window.addEventListener('platform:unauthorized', off);
